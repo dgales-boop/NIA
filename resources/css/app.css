@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+@source '../**/*.jsx';
+
+@theme {
+    --font-sans:
+        "Inter", "Instrument Sans", ui-sans-serif, system-ui, sans-serif,
+        "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+        "Noto Color Emoji";
+}
+
+/* Custom thin scrollbar utility */
+.thin-scrollbar::-webkit-scrollbar {
+    width: 4px;
+}
+.thin-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgb(209 213 219);
+    border-radius: 9999px;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(156 163 175);
+}
+
+/* Firefox thin scrollbar */
+.thin-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(209 213 219) transparent;
+}
+
