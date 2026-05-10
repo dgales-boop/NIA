@@ -6,14 +6,8 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
-class StoreTemplateRequest extends FormRequest
+class UpdateTemplateRequest extends FormRequest
 {
-    public const TEXT_MAX_DEFAULT = 2000;
-
-    public const TEXT_MAX_MIN = 255;
-
-    public const TEXT_MAX_CAP = 10000;
-
     public function authorize(): bool
     {
         return true;
@@ -22,20 +16,24 @@ class StoreTemplateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
-            'schema' => ['required', 'array'],
-            'schema.fields' => ['required', 'array', 'min:1'],
-            'schema.fields.*.key' => ['required', 'string'],
-            'schema.fields.*.label' => ['required', 'string'],
+            'name' => ['sometimes', 'required', 'string', 'max:255'],
+            'schema' => ['sometimes', 'required', 'array'],
+            'schema.fields' => ['required_with:schema', 'array', 'min:1'],
+            'schema.fields.*.key' => ['required_with:schema.fields', 'string'],
+            'schema.fields.*.label' => ['required_with:schema.fields', 'string'],
             'schema.fields.*.required' => ['sometimes', 'boolean'],
-            'schema.fields.*.base_type' => ['required', 'string', Rule::in(['text', 'number', 'date', 'boolean'])],
-            'schema.fields.*.max' => ['sometimes', 'nullable', 'integer', 'min:'.self::TEXT_MAX_MIN, 'max:'.self::TEXT_MAX_CAP],
+            'schema.fields.*.base_type' => ['required_with:schema.fields', 'string', Rule::in(['text', 'number', 'date', 'boolean'])],
+            'schema.fields.*.max' => ['sometimes', 'nullable', 'integer', 'min:'.StoreTemplateRequest::TEXT_MAX_MIN, 'max:'.StoreTemplateRequest::TEXT_MAX_CAP],
         ];
     }
 
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
+            if (! $this->has('schema')) {
+                return;
+            }
+
             $fields = $this->input('schema.fields', []);
 
             $keys = collect($fields)

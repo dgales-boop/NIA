@@ -12,19 +12,18 @@ Deliver a staff-friendly records management system with flexible templates and s
 
 1. Keep implementation practical and non-overengineered.
 2. Prioritize non-technical staff usability over advanced configuration.
-3. Field types must be governed by Admins only.
-4. Template builders must choose from approved field types.
+3. Column types are fixed (`text`, `number`, `date`, `boolean`); template builders pick one per field. Text supports optional `max` length.
+4. Template builders must use only these four column types for new templates.
 5. Required record fields must be enforced.
 6. Template structures become immutable once records exist.
-7. Preserve backward compatibility for existing records.
+7. Preserve backward compatibility for existing records (legacy `base_type` values in JSON where applicable).
 
 ## In Scope (Current Phase)
 
-- Field Type Library foundation (backend + docs + tests)
-- Starter Catalog v1 seeding
-- Template validation update for field type references
-- Record validation hardening (required + type basics)
-- Staff-first UX iteration (later phase)
+- Four column types on templates + validation (`StoreTemplateRequest`, `StoreRecordRequest`)
+- Template/project/entry CRUD with guards documented in `docs/api_contract.md`
+- Record validation hardening (required + types + entry/template match)
+- Staff-first UX (templates list, builder, project table, entry grid)
 
 ## Out of Scope (Current Phase)
 

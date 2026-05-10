@@ -7,8 +7,9 @@ export default function Modal({ open, onClose, title, children }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             {/* Backdrop */}
             <div
-                className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                className="absolute inset-0 cursor-pointer bg-black/40 backdrop-blur-sm"
                 onClick={onClose}
+                aria-hidden
             />
 
             {/* Modal Card */}
@@ -17,6 +18,7 @@ export default function Modal({ open, onClose, title, children }) {
                 <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
                     <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
                     <button
+                        type="button"
                         onClick={onClose}
                         className="rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
                     >

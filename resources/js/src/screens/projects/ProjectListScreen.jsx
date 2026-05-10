@@ -1,60 +1,110 @@
-import { useEffect, useState } from "react";
-import { fetchProjects, createProject, fetchOrgUnits } from "../../services/api";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { fetchProjects, createProject, updateProject, deleteProject } from "../../services/api";
 import PageHeader from "../../components/layout/PageHeader";
 import Button from "../../components/Button";
 import InputField from "../../components/InputField";
+import SearchInput from "../../components/SearchInput";
+import ListPagination from "../../components/ui/ListPagination";
 import Modal from "../../components/ui/Modal";
 import Skeleton from "../../components/ui/Skeleton";
-import { FolderOpen, Plus, ChevronRight, Building2 } from "lucide-react";
+import { FolderOpen, Plus, Pencil, Trash2 } from "lucide-react";
 
-export default function ProjectListScreen({ filterOrgUnitId, onNavigateToEntries, isAdmin }) {
+const PER_PAGE = 15;
+
+export default function ProjectListScreen({ onNavigateToEntries, isAdmin }) {
     const [projects, setProjects] = useState([]);
-    const [orgUnits, setOrgUnits] = useState([]);
+    const [paginationMeta, setPaginationMeta] = useState(null);
+    const [searchApplied, setSearchApplied] = useState("");
+    const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(true);
+    const [tableBusy, setTableBusy] = useState(false);
     const [error, setError] = useState("");
     const [showModal, setShowModal] = useState(false);
+    const [editProject, setEditProject] = useState(null);
 
-    // Form state
     const [newName, setNewName] = useState("");
     const [newDescription, setNewDescription] = useState("");
-    const [newOrgUnitId, setNewOrgUnitId] = useState("");
     const [saving, setSaving] = useState(false);
 
-    const load = async () => {
+    const initialLoadRef = useRef(true);
+
+    const handleSearchDebounced = useCallback((term) => {
+        setSearchApplied(term);
+        setPage(1);
+    }, []);
+
+    const loadList = useCallback(async () => {
+        const first = initialLoadRef.current;
+        if (first) setLoading(true);
+        else setTableBusy(true);
+        setError("");
         try {
-            setLoading(true);
-            const [projectsData, orgData] = await Promise.all([
-                fetchProjects(filterOrgUnitId || null),
-                fetchOrgUnits(true),
-            ]);
-            setProjects(projectsData);
-            setOrgUnits(orgData);
+            const res = await fetchProjects({
+                search: searchApplied || undefined,
+                page,
+                per_page: PER_PAGE,
+            });
+            const lastPage = Math.max(1, Number(res.last_page) || 1);
+            if (page > lastPage) {
+                setPage(lastPage);
+                return;
+            }
+            setProjects(Array.isArray(res.data) ? res.data : []);
+            setPaginationMeta({
+                current_page: res.current_page,
+                last_page: res.last_page,
+                total: res.total,
+                from: res.from,
+                to: res.to,
+            });
         } catch (err) {
             setError(err.message);
         } finally {
             setLoading(false);
+            setTableBusy(false);
+            initialLoadRef.current = false;
         }
-    };
+    }, [page, searchApplied]);
 
     useEffect(() => {
-        load();
-    }, [filterOrgUnitId]);
+        loadList();
+    }, [loadList]);
 
-    const handleCreate = async (e) => {
+    const openCreate = () => {
+        setEditProject(null);
+        setNewName("");
+        setNewDescription("");
+        setError("");
+        setShowModal(true);
+    };
+
+    const openEdit = (project) => {
+        setEditProject(project);
+        setNewName(project.name);
+        setNewDescription(project.description ?? "");
+        setError("");
+        setShowModal(true);
+    };
+
+    const handleSave = async (e) => {
         e.preventDefault();
         setSaving(true);
         setError("");
         try {
-            await createProject({
-                name: newName,
-                description: newDescription || null,
-                org_unit_id: Number(newOrgUnitId),
-            });
+            if (editProject) {
+                await updateProject(editProject.id, {
+                    name: newName,
+                    description: newDescription || null,
+                });
+            } else {
+                await createProject({
+                    name: newName,
+                    description: newDescription || null,
+                });
+            }
             setShowModal(false);
-            setNewName("");
-            setNewDescription("");
-            setNewOrgUnitId("");
-            await load();
+            setEditProject(null);
+            await loadList();
         } catch (err) {
             setError(err.message);
         } finally {
@@ -62,10 +112,32 @@ export default function ProjectListScreen({ filterOrgUnitId, onNavigateToEntries
         }
     };
 
+    const handleDelete = async (project) => {
+        if (
+            !window.confirm(
+                `Delete project "${project.name}"? This is only allowed when the project has no entries.`,
+            )
+        ) {
+            return;
+        }
+        try {
+            setError("");
+            await deleteProject(project.id);
+            await loadList();
+        } catch (err) {
+            setError(err.message);
+        }
+    };
+
+    const total = paginationMeta?.total ?? 0;
+    const hasSearch = Boolean(searchApplied);
+    const emptyBecauseSearch = projects.length === 0 && total === 0 && hasSearch;
+    const emptyNoProjects = projects.length === 0 && total === 0 && !hasSearch;
+
     if (loading) {
         return (
             <div className="space-y-6">
-                <PageHeader title="Projects" subtitle="Manage irrigation projects across organizational units" />
+                <PageHeader title="Projects" />
                 <Skeleton variant="page" rows={6} />
             </div>
         );
@@ -75,13 +147,10 @@ export default function ProjectListScreen({ filterOrgUnitId, onNavigateToEntries
         <div>
             <PageHeader
                 title="Projects"
-                subtitle="Manage irrigation projects across organizational units"
+                subtitle="Each project groups budget entries (site, program, or fiscal unit). Column layouts come from templates, not from the project name."
                 actions={
                     isAdmin ? (
-                        <Button onClick={() => {
-                            setNewOrgUnitId(filterOrgUnitId ? String(filterOrgUnitId) : (orgUnits.length > 0 ? String(orgUnits[0].id) : ""));
-                            setShowModal(true);
-                        }} icon={Plus}>
+                        <Button onClick={openCreate} icon={Plus}>
                             New Project
                         </Button>
                     ) : null
@@ -92,81 +161,142 @@ export default function ProjectListScreen({ filterOrgUnitId, onNavigateToEntries
                 <div className="mb-4 rounded-lg bg-red-50 p-3 border border-red-200 text-sm text-red-800">{error}</div>
             )}
 
-            {projects.length === 0 ? (
+            <div className="mb-4 flex flex-wrap items-center gap-3">
+                <SearchInput
+                    id="projects-search"
+                    placeholder="Search projects by name or description…"
+                    aria-label="Search projects"
+                    onDebouncedChange={handleSearchDebounced}
+                    className="max-w-xl"
+                />
+                <span className="text-sm text-gray-500 tabular-nums">{total} projects</span>
+            </div>
+
+            {emptyNoProjects ? (
                 <div className="rounded-xl border border-gray-200 bg-white px-6 py-16 text-center shadow-sm">
                     <FolderOpen className="mx-auto h-10 w-10 text-gray-300" />
                     <p className="mt-3 text-sm font-medium text-gray-600">No projects yet</p>
                     <p className="mt-1 text-xs text-gray-400">Create a project to start organizing budget entries.</p>
                 </div>
+            ) : emptyBecauseSearch ? (
+                <div className="rounded-xl border border-gray-200 bg-white px-6 py-16 text-center shadow-sm">
+                    <FolderOpen className="mx-auto h-10 w-10 text-gray-300" />
+                    <p className="mt-3 text-sm font-medium text-gray-600">No matching projects</p>
+                    <p className="mt-1 text-xs text-gray-400">Try a different search term.</p>
+                </div>
             ) : (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {projects.map((project) => (
-                        <button
-                            key={project.id}
-                            onClick={() => onNavigateToEntries?.(project.id)}
-                            className="group flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-5 text-left shadow-sm transition-all hover:border-blue-200 hover:shadow-md"
-                        >
-                            <div className="flex items-start justify-between">
-                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600 group-hover:bg-blue-100">
-                                    <FolderOpen className="h-5 w-5" />
-                                </div>
-                                <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-blue-400 transition-colors" />
-                            </div>
-                            <div>
-                                <p className="font-semibold text-gray-900">{project.name}</p>
-                                {project.description && (
-                                    <p className="mt-0.5 text-xs text-gray-500 line-clamp-2">{project.description}</p>
+                <div
+                    className={`overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm ${tableBusy ? "opacity-60 pointer-events-none" : ""}`}
+                >
+                    <table className="min-w-full text-sm">
+                        <thead>
+                            <tr className="border-b border-gray-200 bg-gray-50/80">
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                                    Project
+                                </th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                                    Description
+                                </th>
+                                <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500">
+                                    Entries
+                                </th>
+                                {isAdmin && (
+                                    <th className="w-32 px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">
+                                        Actions
+                                    </th>
                                 )}
-                            </div>
-                            <div className="flex items-center gap-3 text-xs text-gray-400 border-t border-gray-100 pt-3">
-                                <span className="flex items-center gap-1">
-                                    <Building2 className="h-3 w-3" />
-                                    {project.org_unit?.name ?? "—"}
-                                </span>
-                                <span>·</span>
-                                <span>{project.entries_count ?? 0} entries</span>
-                            </div>
-                        </button>
-                    ))}
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {projects.map((project) => (
+                                <tr key={project.id} className="hover:bg-blue-50/20 transition-colors">
+                                    <td className="px-4 py-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => onNavigateToEntries?.(project.id)}
+                                            className="text-left font-semibold text-gray-900 hover:text-blue-700"
+                                        >
+                                            {project.name}
+                                        </button>
+                                    </td>
+                                    <td className="max-w-md px-4 py-3 text-gray-600">
+                                        <span className="line-clamp-2 text-xs">{project.description || "—"}</span>
+                                    </td>
+                                    <td className="px-4 py-3 text-center text-gray-600">{project.entries_count ?? 0}</td>
+                                    {isAdmin && (
+                                        <td className="px-4 py-3 text-right">
+                                            <div className="flex justify-end gap-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        openEdit(project);
+                                                    }}
+                                                    className="inline-flex items-center gap-1 rounded-md p-1.5 text-blue-700 hover:bg-blue-50"
+                                                    title="Edit"
+                                                >
+                                                    <Pencil className="h-4 w-4" />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDelete(project);
+                                                    }}
+                                                    className="inline-flex items-center gap-1 rounded-md p-1.5 text-red-700 hover:bg-red-50"
+                                                    title="Delete"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    )}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                    <ListPagination
+                        meta={paginationMeta}
+                        disabled={tableBusy}
+                        onPageChange={(p) => setPage(p)}
+                    />
                 </div>
             )}
 
-            {/* Create Project Modal */}
-            <Modal open={showModal} onClose={() => setShowModal(false)} title="New Project">
-                <form onSubmit={handleCreate} className="space-y-4">
+            <Modal
+                open={showModal}
+                onClose={() => {
+                    setShowModal(false);
+                    setEditProject(null);
+                    setError("");
+                }}
+                title={editProject ? "Edit Project" : "New Project"}
+            >
+                <form onSubmit={handleSave} className="space-y-4">
                     <InputField
                         label="Project Name"
                         value={newName}
                         onChange={setNewName}
-                        placeholder="e.g. Bayanihan CIS"
                     />
                     <InputField
                         label="Description (optional)"
                         value={newDescription}
                         onChange={setNewDescription}
-                        placeholder="Brief description..."
                     />
-                    <label className="flex flex-col gap-1.5 text-sm font-medium text-gray-700">
-                        <span>Organizational Unit</span>
-                        <select
-                            value={newOrgUnitId}
-                            onChange={(e) => setNewOrgUnitId(e.target.value)}
-                            className="block w-full rounded-md border border-gray-300 py-2.5 px-3 shadow-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 sm:text-sm bg-white"
-                        >
-                            <option value="">Select an office...</option>
-                            {orgUnits.map((u) => (
-                                <option key={u.id} value={u.id}>
-                                    {u.path ?? u.name}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
                     <div className="flex justify-end gap-2 pt-2">
-                        <Button variant="secondary" onClick={() => setShowModal(false)} type="button">
+                        <Button
+                            variant="secondary"
+                            onClick={() => {
+                                setShowModal(false);
+                                setEditProject(null);
+                                setError("");
+                            }}
+                            type="button"
+                        >
                             Cancel
                         </Button>
-                        <Button type="submit" loading={saving} disabled={!newName.trim() || !newOrgUnitId}>
-                            Create Project
+                        <Button type="submit" loading={saving} disabled={!newName.trim()}>
+                            {editProject ? "Save" : "Create Project"}
                         </Button>
                     </div>
                 </form>

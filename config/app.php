@@ -123,4 +123,21 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Local request performance logging
+    |--------------------------------------------------------------------------
+    |
+    | When local_perf_log is true and APP_ENV=local, web requests log duration,
+    | query count, and slow queries (see LogLocalRequestPerformance). Never
+    | enable in production. Query SQL is truncated; bindings are not logged.
+    |
+    */
+
+    'local_perf_log' => (bool) env('LOCAL_PERF_LOG', false),
+
+    'local_perf_slow_query_ms' => (float) env('LOCAL_PERF_SLOW_QUERY_MS', 100),
+
+    'local_perf_log_channel' => env('LOCAL_PERF_LOG_CHANNEL', 'stack'),
+
 ];

@@ -1,5 +1,23 @@
 # Data Model Contract
 
+## projects
+
+- id
+- name
+- description (nullable)
+- created_by (user id)
+- timestamps
+
+## entries
+
+- id
+- title
+- project_id
+- template_id
+- status (`open` | `closed` | `exported`)
+- created_by
+- timestamps
+
 ## templates
 
 - id
@@ -7,33 +25,38 @@
 - schema (json)
 - timestamps
 
-Schema field object:
+### Schema field object (current)
 
-- key
-- label
-- required (boolean)
-- field_type_id
-- field_type_key (snapshot)
-- base_type (snapshot)
+- `key` (string)
+- `label` (string)
+- `required` (boolean)
+- `base_type`: `text` | `number` | `date` | `boolean`
+- `max` (integer, **text only**): optional; default 2000 when omitted on save; clamped between 255 and 10000
+
+Legacy rows may still contain older keys (`field_type_id`, `textarea`, `select`, etc.); readers should prefer `base_type` and treat unknown types conservatively.
 
 ## records
 
 - id
 - template_id
+- entry_id (nullable, FK; cascade on entry delete)
 - data (json)
 - timestamps
 
 Rules:
 
-- data keys must exist in template schema keys
-- required fields must be present
-- missing optional fields allowed as null
+- `data` keys must exist in the template schema keys
+- Required fields must be present (non-empty)
+- Optional fields may be omitted or null
+- When `entry_id` is set, it must reference an entry whose `template_id` equals the record’s `template_id`
+- When `entry_id` is set, the entry must be **`open`** (new records are not accepted for `closed` or `exported` entries)
 
-## field_types
+## Column types
 
-Defined in docs/field_type_library_spec.md.
+See `docs/field_type_library_spec.md` (renamed concept: fixed four column types, no separate field-type catalog table).
 
 ## Immutability
 
-- Template structure locked once records exist.
-- Existing records always interpretable via template snapshots.
+- Template **column definitions** (`schema`) cannot change once any **record** exists for that `template_id`.
+- Template **name** can still be updated.
+- Entry **template_id** cannot change once the entry has **records**.

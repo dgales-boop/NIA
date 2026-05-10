@@ -42,7 +42,6 @@ export default function LoginScreen({ onLoggedIn }) {
                     label="Email address"
                     value={email}
                     onChange={setEmail}
-                    placeholder="name@nia.gov.ph"
                     icon={Mail}
                 />
                 <InputField
@@ -50,7 +49,6 @@ export default function LoginScreen({ onLoggedIn }) {
                     type="password"
                     value={password}
                     onChange={setPassword}
-                    placeholder="Enter your password"
                     icon={Lock}
                 />
 

@@ -1,6 +1,8 @@
-export default function PageHeader({ title, subtitle, actions }) {
+export default function PageHeader({ title, subtitle, actions, dense = false }) {
     return (
-        <div className="mb-6 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <div
+            className={`${dense ? "mb-3" : "mb-6"} flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between`}
+        >
             <div>
                 <h1 className="text-xl font-semibold text-gray-900">{title}</h1>
                 {subtitle && (

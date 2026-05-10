@@ -26,4 +26,9 @@ class Template extends Model
     {
         return $this->hasMany(Record::class);
     }
+
+    public function entries(): HasMany
+    {
+        return $this->hasMany(Entry::class);
+    }
 }

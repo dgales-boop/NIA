@@ -1,18 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import LoginScreen from "./screens/auth/LoginScreen";
-import FieldTypeLibraryScreen from "./screens/admin/FieldTypeLibraryScreen";
+import FormsListScreen from "./screens/admin/FormsListScreen";
 import TemplateBuilderScreen from "./screens/admin/TemplateBuilderScreen";
-import OrgTreeScreen from "./screens/org/OrgTreeScreen";
 import ProjectListScreen from "./screens/projects/ProjectListScreen";
 import EntryListScreen from "./screens/entries/EntryListScreen";
 import EntryDetailScreen from "./screens/entries/EntryDetailScreen";
-import Button from "./components/Button";
 import { fetchTemplates, logout, me } from "./services/api";
 import {
     LogOut,
-    Library,
     FormInput,
-    Building2,
     FolderOpen,
     FileText,
     Menu,
@@ -23,22 +19,14 @@ import {
 const NIA_LOGO = "/images/nia-logo.png";
 
 const SCREENS = {
-    org: "org",
     projects: "projects",
     entries: "entries",
     entryDetail: "entryDetail",
-    fieldLibrary: "fieldLibrary",
+    forms: "forms",
     formBuilder: "formBuilder",
 };
 
 const NAV_ITEMS = [
-    {
-        key: SCREENS.org,
-        label: "Organization",
-        icon: Building2,
-        group: "browse",
-        adminOnly: false,
-    },
     {
         key: SCREENS.projects,
         label: "Projects",
@@ -54,15 +42,8 @@ const NAV_ITEMS = [
         adminOnly: false,
     },
     {
-        key: SCREENS.fieldLibrary,
-        label: "Field Library",
-        icon: Library,
-        group: "admin",
-        adminOnly: true,
-    },
-    {
-        key: SCREENS.formBuilder,
-        label: "Form Builder",
+        key: SCREENS.forms,
+        label: "Templates",
         icon: FormInput,
         group: "admin",
         adminOnly: true,
@@ -74,17 +55,27 @@ export default function App() {
     const [checkingAuth, setCheckingAuth] = useState(true);
     const [activeScreen, setActiveScreen] = useState(null);
     const [screenParams, setScreenParams] = useState({});
-    const [templates, setTemplates] = useState([]);
     const [error, setError] = useState("");
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [templates, setTemplates] = useState([]);
 
     const isAdmin = user?.role === "admin";
 
     useEffect(() => {
+        const onAuthExpired = () => {
+            setUser(null);
+            setActiveScreen(null);
+            setScreenParams({});
+        };
+        window.addEventListener("auth-expired", onAuthExpired);
+        return () => window.removeEventListener("auth-expired", onAuthExpired);
+    }, []);
+
+    useEffect(() => {
         if (user && !activeScreen) {
-            setActiveScreen(isAdmin ? SCREENS.org : SCREENS.entries);
+            setActiveScreen(SCREENS.projects);
         }
-    }, [user, isAdmin, activeScreen]);
+    }, [user, activeScreen]);
 
     const visibleNavItems = useMemo(
         () => NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin),
@@ -97,8 +88,8 @@ export default function App() {
     const loadTemplates = async () => {
         try {
             setError("");
-            const loaded = await fetchTemplates();
-            setTemplates(loaded);
+            const data = await fetchTemplates();
+            setTemplates(Array.isArray(data) ? data : []);
         } catch (err) {
             setError(err.message);
         }
@@ -121,16 +112,13 @@ export default function App() {
 
     const handleLoggedIn = async (loggedInUser) => {
         setUser(loggedInUser);
-        setActiveScreen(
-            loggedInUser.role === "admin" ? SCREENS.org : SCREENS.entries,
-        );
+        setActiveScreen(SCREENS.projects);
         await loadTemplates();
     };
 
     const handleLogout = async () => {
         await logout();
         setUser(null);
-        setTemplates([]);
         setActiveScreen(null);
         setScreenParams({});
     };
@@ -203,12 +191,13 @@ export default function App() {
 
     // --- Sidebar Nav Item ---
     const renderNavItem = (item) => {
-        const isActive = activeScreen === item.key;
+        const isActive = activeScreen === item.key || (item.key === SCREENS.forms && activeScreen === SCREENS.formBuilder);
         return (
             <button
+                type="button"
                 key={item.key}
                 onClick={() => navigateTo(item.key)}
-                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
+                className={`flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
                     isActive
                         ? "bg-blue-50 text-blue-700"
                         : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
@@ -224,18 +213,19 @@ export default function App() {
 
     // --- Authenticated ---
     return (
-        <div className="flex min-h-screen bg-gray-50">
+        <div className="flex h-screen min-h-0 overflow-hidden bg-gray-50">
             {/* Mobile backdrop */}
             {sidebarOpen && (
                 <div
-                    className="fixed inset-0 z-30 bg-black/30 backdrop-blur-sm lg:hidden"
+                    className="fixed inset-0 z-30 cursor-pointer bg-black/30 backdrop-blur-sm lg:hidden"
                     onClick={() => setSidebarOpen(false)}
+                    aria-hidden
                 />
             )}
 
-            {/* Sidebar */}
+            {/* Sidebar: viewport height only; nav scrolls inside (does not stretch with main content) */}
             <aside
-                className={`fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-gray-200 bg-white transition-transform duration-200 lg:static lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+                className={`fixed inset-y-0 left-0 z-40 flex h-screen w-60 shrink-0 flex-col border-r border-gray-200 bg-white transition-transform duration-200 lg:relative lg:inset-auto lg:z-0 lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
             >
                 {/* Header */}
                 <div className="flex h-14 items-center gap-3 border-b border-gray-100 px-4">
@@ -253,15 +243,16 @@ export default function App() {
                         </p>
                     </div>
                     <button
+                        type="button"
                         onClick={() => setSidebarOpen(false)}
-                        className="ml-auto rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 lg:hidden"
+                        className="ml-auto cursor-pointer rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 lg:hidden"
                     >
                         <X className="h-5 w-5" />
                     </button>
                 </div>
 
                 {/* Nav */}
-                <nav className="flex-1 overflow-y-auto thin-scrollbar px-3 py-3">
+                <nav className="min-h-0 flex-1 overflow-y-auto thin-scrollbar px-3 py-3">
                     <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
                         Browse
                     </p>
@@ -298,21 +289,23 @@ export default function App() {
                         </div>
                     </div>
                     <button
+                        type="button"
                         onClick={handleLogout}
-                        className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900"
+                        className="mt-2.5 flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900"
                     >
                         <LogOut className="h-3.5 w-3.5" /> Sign out
                     </button>
                 </div>
             </aside>
 
-            {/* Main */}
-            <div className="flex flex-1 flex-col min-w-0">
+            {/* Main: single scroll region */}
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
                 {/* Mobile top bar */}
-                <header className="sticky top-0 z-20 flex h-12 items-center gap-3 border-b border-gray-200 bg-white/95 backdrop-blur px-4 lg:hidden">
+                <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center gap-3 border-b border-gray-200 bg-white/95 backdrop-blur px-4 lg:hidden">
                     <button
+                        type="button"
                         onClick={() => setSidebarOpen(true)}
-                        className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                        className="cursor-pointer rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
                     >
                         <Menu className="h-5 w-5" />
                     </button>
@@ -321,24 +314,15 @@ export default function App() {
                     </span>
                 </header>
 
-                <main className="flex-1 overflow-y-auto thin-scrollbar p-4 sm:p-6 lg:p-8">
+                <main className="min-h-0 flex-1 overflow-y-auto thin-scrollbar p-4 sm:p-6 lg:p-8">
                     {error && (
                         <div className="mb-6 rounded-lg bg-red-50 p-4 border border-red-200">
                             <p className="text-sm text-red-800">{error}</p>
                         </div>
                     )}
 
-                    {activeScreen === SCREENS.org && (
-                        <OrgTreeScreen
-                            onNavigateToProjects={(orgUnitId) =>
-                                navigateTo(SCREENS.projects, { orgUnitId })
-                            }
-                        />
-                    )}
-
                     {activeScreen === SCREENS.projects && (
                         <ProjectListScreen
-                            filterOrgUnitId={screenParams.orgUnitId}
                             onNavigateToEntries={(projectId) =>
                                 navigateTo(SCREENS.entries, { projectId })
                             }
@@ -352,6 +336,9 @@ export default function App() {
                             onOpenEntry={(entryId) =>
                                 navigateTo(SCREENS.entryDetail, { entryId })
                             }
+                            currentUserId={user.id}
+                            isAdmin={isAdmin}
+                            templates={templates}
                         />
                     )}
 
@@ -359,18 +346,33 @@ export default function App() {
                         screenParams.entryId && (
                             <EntryDetailScreen
                                 entryId={screenParams.entryId}
-                                onBack={() => navigateTo(SCREENS.entries)}
+                                onBack={(projectId) =>
+                                    navigateTo(
+                                        SCREENS.entries,
+                                        projectId != null ? { projectId } : {},
+                                    )
+                                }
                                 isAdmin={isAdmin}
                             />
                         )}
 
-                    {activeScreen === SCREENS.fieldLibrary && isAdmin && (
-                        <FieldTypeLibraryScreen />
+                    {activeScreen === SCREENS.forms && isAdmin && (
+                        <FormsListScreen
+                            onRefreshTemplates={loadTemplates}
+                            onCreateForm={() =>
+                                navigateTo(SCREENS.formBuilder, { templateId: null })
+                            }
+                            onEditForm={(templateId) =>
+                                navigateTo(SCREENS.formBuilder, { templateId })
+                            }
+                        />
                     )}
 
                     {activeScreen === SCREENS.formBuilder && isAdmin && (
                         <TemplateBuilderScreen
-                            onTemplateCreated={loadTemplates}
+                            templateId={screenParams.templateId ?? null}
+                            onSaved={loadTemplates}
+                            onCancel={() => navigateTo(SCREENS.forms)}
                         />
                     )}
                 </main>

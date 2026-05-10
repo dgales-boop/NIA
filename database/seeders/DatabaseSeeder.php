@@ -11,31 +11,25 @@ class DatabaseSeeder extends Seeder
     use WithoutModelEvents;
 
     /**
-     * Seed the application's database.
+     * Seed demo login accounts only (no projects, templates, or entries).
+     * Re-running resets passwords to match below.
      */
     public function run(): void
     {
-        $this->call([
-            FieldTypeSeeder::class,
-            OrgUnitSeeder::class,
-        ]);
+        $accounts = [
+            ['email' => 'admin@nia.gov.ph', 'name' => 'Administrator', 'role' => 'admin'],
+            ['email' => 'encoder@nia.gov.ph', 'name' => 'Encoder', 'role' => 'encoder'],
+        ];
 
-        if (! User::query()->where('email', 'admin@nia.gov.ph')->exists()) {
-            User::factory()->create([
-                'name' => 'Ms. Puti Dela Cruz',
-                'email' => 'admin@nia.gov.ph',
-                'password' => 'password',
-                'role' => 'admin',
-            ]);
-        }
-
-        if (! User::query()->where('email', 'encoder@nia.gov.ph')->exists()) {
-            User::factory()->create([
-                'name' => 'Ms. Jane Rose T. Dela Cruz',
-                'email' => 'encoder@nia.gov.ph',
-                'password' => 'password',
-                'role' => 'encoder',
-            ]);
+        foreach ($accounts as $account) {
+            User::query()->updateOrCreate(
+                ['email' => $account['email']],
+                [
+                    'name' => $account['name'],
+                    'password' => 'password',
+                    'role' => $account['role'],
+                ],
+            );
         }
     }
 }

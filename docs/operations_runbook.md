@@ -4,7 +4,7 @@
 
 1. Backup database.
 2. Run migrations.
-3. Seed starter field types.
+3. Run `php artisan db:seed` if demo users are required (`DemoUserSeeder` only; no field-type seeding).
 4. Run tests and build.
 
 ## Rollback

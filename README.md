@@ -57,13 +57,32 @@ php artisan key:generate
    DB_PASSWORD=                <-- Leave this blank for default XAMPP
    ```
 
-### Step 7: Run Migrations (Create the Database Tables)
-Before this step, the database is empty. You need to run "migrations" to magically create all the tables the app needs.
-Run this command:
+### Step 7: Run Migrations and Seeders (Create Tables and Demo Users)
+This step creates all database tables **and** the demo accounts used on the login screen.
+
 ```bash
-php artisan migrate
+php artisan migrate --seed
 ```
-*(If the terminal asks if you want to create the database because it doesn't exist, type `yes` and press Enter!)*
+
+If you already ran `migrate` without `--seed`, run:
+
+```bash
+php artisan db:seed
+```
+
+**Demo accounts** (password for both is `password`):
+
+- **Admin:** `admin@nia.gov.ph`
+- **Encoder:** `encoder@nia.gov.ph`
+
+Re-running `php artisan db:seed` updates those users again (useful if login fails because an old password was set). Your `.env` `DB_*` values must point at the same database the app uses.
+
+If login still fails, check `APP_URL` matches how you open the app (for example `http://127.0.0.1:8000`), and that cookies are not blocked.
+
+### Performance tuning (optional)
+
+- **`LOCAL_PERF_LOG`**: In `.env`, set `LOCAL_PERF_LOG=true` while `APP_ENV=local` to write **duration, query count, and slow queries** to the application log (`storage/logs`). Turn this off when you are done profiling.
+- **`SESSION_DRIVER`** / **`CACHE_STORE`**: Defaults use the **database**, which adds queries on each request. For local troubleshooting you can try `SESSION_DRIVER=file` (ensure `storage/framework/sessions` is writable) to see if latency improves—verify login still works before deploying any change.
 
 ### Step 8: Build the Frontend
 To compile all the CSS and JavaScript so the project looks nice, run:

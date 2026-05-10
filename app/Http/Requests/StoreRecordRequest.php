@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Entry;
 use App\Models\Template;
+use App\Support\RecordSchemaValidator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -25,7 +27,7 @@ class StoreRecordRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
-            $templateId = $this->input('template_id');
+            $templateId = (int) $this->input('template_id');
 
             if (! $templateId) {
                 return;
@@ -37,73 +39,26 @@ class StoreRecordRequest extends FormRequest
                 return;
             }
 
-            $schemaFields = collect($template->schema['fields'] ?? []);
-            $schemaKeys = $schemaFields->pluck('key')->all();
-            $data = $this->input('data', []);
-            $dataKeys = array_keys($data);
+            $entryId = $this->input('entry_id');
 
-            $unknownKeys = array_diff($dataKeys, $schemaKeys);
+            if ($entryId) {
+                $entry = Entry::query()->find((int) $entryId);
 
-            if (! empty($unknownKeys)) {
-                $validator->errors()->add('data', 'Unknown fields are not allowed: '.implode(', ', $unknownKeys));
-            }
-
-            foreach ($schemaFields as $field) {
-                $key = $field['key'] ?? null;
-
-                if (! $key) {
-                    continue;
+                if ($entry && (int) $entry->template_id !== $templateId) {
+                    $validator->errors()->add('entry_id', 'The entry does not use this template.');
                 }
 
-                $value = $data[$key] ?? null;
-                $isRequired = (bool) ($field['required'] ?? false);
-
-                if ($isRequired && $this->isEmptyValue($value)) {
-                    $validator->errors()->add('data.'.$key, 'This field is required.');
-                    continue;
-                }
-
-                if ($this->isEmptyValue($value)) {
-                    continue;
-                }
-
-                $baseType = $field['base_type'] ?? 'text';
-
-                if (! $this->isValidByBaseType($value, $baseType, $field)) {
-                    $validator->errors()->add('data.'.$key, 'The value does not match required type: '.$baseType.'.');
+                if ($entry && $entry->status !== 'open') {
+                    $validator->errors()->add('entry_id', 'Records can only be saved while the entry is open.');
                 }
             }
+
+            RecordSchemaValidator::validateDataArray(
+                $template,
+                $this->input('data', []),
+                $validator,
+                'data',
+            );
         });
-    }
-
-    private function isEmptyValue(mixed $value): bool
-    {
-        return $value === null || $value === '';
-    }
-
-    private function isValidByBaseType(mixed $value, string $baseType, array $field): bool
-    {
-        return match ($baseType) {
-            'number' => is_numeric($value),
-            'date' => is_string($value) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) === 1,
-            'boolean' => in_array($value, [true, false, 0, 1, '0', '1', 'true', 'false', 'yes', 'no'], true),
-            'select' => $this->isValidSelectValue($value, $field),
-            default => is_scalar($value),
-        };
-    }
-
-    private function isValidSelectValue(mixed $value, array $field): bool
-    {
-        if (! is_scalar($value)) {
-            return false;
-        }
-
-        $options = $field['settings']['options'] ?? [];
-
-        if (! is_array($options) || empty($options)) {
-            return true;
-        }
-
-        return in_array((string) $value, array_map('strval', $options), true);
     }
 }

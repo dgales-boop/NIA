@@ -1,5 +1,7 @@
 # SYSTEM SPECIFICATION (V1 - POC)
 
+> **Note (2026):** The production direction for this repository is a **Laravel + Vite/React** web app with session authentication and roles (`admin`, `encoder`). The narrative below describes an earlier POC (React Native); keep it only as historical context unless revived.
+
 ## NIA FLEXIBLE RECORDS MANAGEMENT SYSTEM (JSON-BASED)
 
 ---

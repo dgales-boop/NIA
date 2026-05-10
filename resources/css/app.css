@@ -13,6 +13,28 @@
         "Noto Color Emoji";
 }
 
+/* Pointer / affordance: native buttons often use the default arrow — make targets obvious */
+@layer base {
+    button:not(:disabled),
+    input[type="submit"]:not(:disabled),
+    input[type="button"]:not(:disabled),
+    input[type="reset"]:not(:disabled) {
+        cursor: pointer;
+    }
+    button:disabled {
+        cursor: not-allowed;
+    }
+    a[href] {
+        cursor: pointer;
+    }
+    select:not(:disabled) {
+        cursor: pointer;
+    }
+    summary {
+        cursor: pointer;
+    }
+}
+
 /* Custom thin scrollbar utility */
 .thin-scrollbar::-webkit-scrollbar {
     width: 4px;
@@ -32,5 +54,75 @@
 .thin-scrollbar {
     scrollbar-width: thin;
     scrollbar-color: rgb(209 213 219) transparent;
+}
+
+/* ─── Entry sheet: one unified “window” around toolbar + grid ─── */
+.nia-entry-sheet {
+    max-width: 100%;
+}
+
+.nia-entry-sheet__grid {
+    background: #fff;
+}
+
+/* ─── Entry bulk grid: spreadsheet look (AG Grid Balham + overrides) ─── */
+.nia-entry-grid--excel.ag-theme-balham {
+    --ag-font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    --ag-font-size: 12px;
+    --ag-row-height: 28px;
+    --ag-grid-size: 4px;
+    --ag-background-color: #ffffff;
+    --ag-foreground-color: #1a1a1a;
+    --ag-header-background-color: #e7e7e7;
+    --ag-header-foreground-color: #1a1a1a;
+    --ag-border-color: #8c8c8c;
+    --ag-row-border-color: #b4b4b4;
+    --ag-header-column-separator-color: #8c8c8c;
+    --ag-header-column-separator-display: block;
+    --ag-header-column-separator-height: 100%;
+    --ag-odd-row-background-color: #f7f7f7;
+    --ag-row-hover-color: #e5f3ff;
+    --ag-selected-row-background-color: #d8ead3;
+    --ag-range-selection-background-color: rgba(33, 115, 70, 0.18);
+    --ag-range-selection-border-color: #217346;
+    --ag-balham-active-color: #217346;
+    --ag-checkbox-checked-color: #217346;
+    --ag-cell-horizontal-padding: 6px;
+    --ag-border-radius: 0;
+    --ag-wrapper-border-radius: 0;
+}
+
+/* Faint horizontal rules in the scrollable area below the last row (sheet “continuation”) */
+.nia-entry-grid--excel.ag-theme-balham .ag-body-viewport {
+    background-color: #ffffff;
+    background-image: repeating-linear-gradient(
+        to bottom,
+        transparent 0,
+        transparent 27px,
+        rgba(0, 0, 0, 0.08) 27px,
+        rgba(0, 0, 0, 0.08) 28px
+    );
+}
+
+.nia-entry-grid--excel.ag-theme-balham .ag-header-cell,
+.nia-entry-grid--excel.ag-theme-balham .ag-header-group-cell {
+    font-weight: 600;
+    border-bottom: 1px solid #8c8c8c;
+}
+
+.nia-entry-grid--excel.ag-theme-balham .ag-header-cell:not(:last-child),
+.nia-entry-grid--excel.ag-theme-balham .ag-cell:not(:last-child) {
+    border-right: 1px solid #b4b4b4;
+}
+
+.nia-entry-grid--excel.ag-theme-balham .ag-cell-focus:not(.ag-cell-range-selected):focus-within {
+    outline: 2px solid #217346;
+    outline-offset: -2px;
+}
+
+.nia-entry-grid--excel.ag-theme-balham .ag-input-field-input,
+.nia-entry-grid--excel.ag-theme-balham .ag-text-field-input {
+    border-radius: 0;
+    border: 1px solid #a0a0a0;
 }
 

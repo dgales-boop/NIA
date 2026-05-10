@@ -3,7 +3,7 @@ export default function InputField({
     value,
     onChange,
     type = "text",
-    placeholder = "",
+    placeholder,
     icon: Icon,
 }) {
     return (
@@ -19,8 +19,8 @@ export default function InputField({
                     type={type}
                     value={value}
                     onChange={(event) => onChange(event.target.value)}
-                    placeholder={placeholder}
-                    className={`block w-full rounded-md border border-gray-300 py-2 shadow-sm transition-colors placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 sm:text-sm ${
+                    placeholder={placeholder || undefined}
+                    className={`block w-full rounded-md border border-gray-300 py-2 shadow-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 sm:text-sm ${
                         Icon ? "pl-10 pr-3" : "px-3"
                     }`}
                 />

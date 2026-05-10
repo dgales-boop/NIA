@@ -11,14 +11,8 @@ class Project extends Model
     protected $fillable = [
         'name',
         'description',
-        'org_unit_id',
         'created_by',
     ];
-
-    public function orgUnit(): BelongsTo
-    {
-        return $this->belongsTo(OrgUnit::class);
-    }
 
     public function entries(): HasMany
     {

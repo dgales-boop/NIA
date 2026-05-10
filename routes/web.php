@@ -2,8 +2,6 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EntryController;
-use App\Http\Controllers\FieldTypes\FieldTypeController;
-use App\Http\Controllers\OrgUnitController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\RecordController;
 use App\Http\Controllers\TemplateController;
@@ -21,39 +19,38 @@ Route::get('/auth/me', [AuthController::class, 'me']);
 Route::middleware('auth')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
 
-    // Org Units (Read Only for everyone)
-    Route::get('/org-units', [OrgUnitController::class, 'index']);
-    Route::get('/org-units/{id}', [OrgUnitController::class, 'show']);
-    Route::get('/org-units/{id}/children', [OrgUnitController::class, 'children']);
-
     // Projects
     Route::get('/projects', [ProjectController::class, 'index']);
     Route::get('/projects/{id}', [ProjectController::class, 'show']);
 
-    // Templates & Field Types (Read Only for everyone)
+    // Templates (read for all authenticated users)
     Route::get('/templates', [TemplateController::class, 'index']);
-    Route::get('/field-types', [FieldTypeController::class, 'index']);
+    Route::get('/templates/{id}', [TemplateController::class, 'show']);
 
     // Entries
     Route::get('/entries', [EntryController::class, 'index']);
-    Route::post('/entries', [EntryController::class, 'store']); // Encoders can create Entries
+    Route::post('/entries', [EntryController::class, 'store']);
     Route::get('/entries/{id}', [EntryController::class, 'show']);
+    Route::put('/entries/{id}', [EntryController::class, 'update']);
+    Route::delete('/entries/{id}', [EntryController::class, 'destroy']);
+    Route::post('/entries/{id}/mark-exported', [EntryController::class, 'markExported']);
 
     // Records
     Route::get('/records', [RecordController::class, 'index']);
-    Route::post('/records', [RecordController::class, 'store']); // Encoders can create records
+    Route::post('/records', [RecordController::class, 'store']);
+    Route::post('/records/bulk-store', [RecordController::class, 'bulkStore']);
+    Route::put('/records/{record}', [RecordController::class, 'update']);
 
     // --- Admin Only Routes ---
     Route::middleware('role:admin')->group(function () {
-        // Form/Template management
         Route::post('/templates', [TemplateController::class, 'store']);
-        Route::post('/field-types', [FieldTypeController::class, 'store']);
-        Route::post('/field-types/{fieldType}/deactivate', [FieldTypeController::class, 'deactivate']);
+        Route::put('/templates/{id}', [TemplateController::class, 'update']);
+        Route::delete('/templates/{id}', [TemplateController::class, 'destroy']);
 
-        // Project management
         Route::post('/projects', [ProjectController::class, 'store']);
+        Route::put('/projects/{id}', [ProjectController::class, 'update']);
+        Route::delete('/projects/{id}', [ProjectController::class, 'destroy']);
 
-        // Entry status management
         Route::post('/entries/{id}/close', [EntryController::class, 'close']);
         Route::post('/entries/{id}/reopen', [EntryController::class, 'reopen']);
     });
